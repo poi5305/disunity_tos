@@ -9,7 +9,7 @@ $filesize = filesize($argv[1]);
 $fp = fopen($argv[1], "r");
 fseek($fp, $argv[2]|0);
 
-$headerSize = $argv[3]|$filesize;
+$headerSize = min($argv[3]|$filesize, $filesize);
 $header = fread($fp, $headerSize);
 
 $headerHex = unpack("H*", $header)[1];
