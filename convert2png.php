@@ -1,4 +1,6 @@
 <?php
+// Author: Andy (Min-Te, Chou)
+
 $unity3dFormat = "Z:*:format/m/C/Z:*:version/Z:*:version2/m/I:9/Z:*:bundleName";
 $v3Format_p1 = "I:1:_size/z:*:path/m/I:13:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
 $v3Format_p2 = "I:1:_size/z:*:path/m/I:14:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
@@ -181,10 +183,12 @@ function makeKtxHeader($t, $w, $h) {
 	);
 }
 
+// call pack() function with array as arguments
 function array_pack(array $arr) {
 	return call_user_func_array("pack", $arr);
 }	
 
+// Calculate length of unpack type with its length
 function getPackTypeSize($t, $s) {
 	switch($t) {
 	case 'a': case 'A': case 'c': case 'C': 
@@ -205,6 +209,7 @@ function getPackTypeSize($t, $s) {
 	return 1;
 }
 
+// Convince function for unpack2 from file resource
 function unpack2fp($format, &$fp, $bufSize = 4096) {
 	$oSeek = ftell($fp);
 	fseek($fp, 0, SEEK_END);
@@ -216,6 +221,15 @@ function unpack2fp($format, &$fp, $bufSize = 4096) {
 	return $result;
 }
 
+// Customize unpack function for convince using
+//
+// example: I:1:_size/z:*:path/m/I:13:f/Z:*:name/M
+// I:1:_size, get one int (4 bytes) with name _size. _size is used for 'z' with char length
+// z:*:path, get multiple chars with length _size. Important! _size need be assigned before 
+// m, align bytes to 4 bytes
+// I:13:f, get 13 int (13 * 4 bytes) with name f
+// Z:*:name, get multiple chars until \0 occures, with name name
+// M, align bytes to 8 bytes
 function unpack2($format, &$data) {
 	$types = explode("/", $format);
 	$pos = 0;
@@ -253,60 +267,5 @@ function unpack2($format, &$data) {
 	$result['_pos'] = $pos;
 	return $result;
 }
-
-/*
-	Alpha8 = 1,
-		ARGB4444,
-		RGB24,
-		RGBA32,
-		ARGB32,
-		RGB565 = 7,
-		R16 = 9,
-		DXT1,
-		DXT5 = 12,
-		RGBA4444,
-		BGRA32,
-		RHalf,
-		RGHalf,
-		RGBAHalf,
-		RFloat,
-		RGFloat,
-		RGBAFloat,
-		YUY2,
-		DXT1Crunched = 28,
-		DXT5Crunched,
-		PVRTC_RGB2,
-		PVRTC_RGBA2,
-		PVRTC_RGB4,
-		PVRTC_RGBA4 = 33,
-		ETC_RGB4,
-		ATC_RGB4,
-		ATC_RGBA8,
-		EAC_R = 41,
-		EAC_R_SIGNED,
-		EAC_RG,
-		EAC_RG_SIGNED,
-		ETC2_RGB,
-		ETC2_RGBA1,
-		ETC2_RGBA8,
-		ASTC_RGB_4x4,
-		ASTC_RGB_5x5,
-		ASTC_RGB_6x6,
-		ASTC_RGB_8x8,
-		ASTC_RGB_10x10,
-		ASTC_RGB_12x12,
-		ASTC_RGBA_4x4,
-		ASTC_RGBA_5x5,
-		ASTC_RGBA_6x6,
-		ASTC_RGBA_8x8,
-		ASTC_RGBA_10x10,
-		ASTC_RGBA_12x12,
-		ETC_RGB4_3DS,
-		ETC_RGBA8_3DS,
-		PVRTC_2BPP_RGB = -127,
-		PVRTC_2BPP_RGBA = -127,
-		PVRTC_4BPP_RGB = -127,
-		PVRTC_4BPP_RGBA = -127
-*/
 
 ?>
