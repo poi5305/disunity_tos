@@ -2,7 +2,7 @@
 // Author: Andy (Min-Te, Chou)
 
 if ($argc < 4) {
-	die("usage: php binary_reader.php filename start_position read_length\n");
+	die("usage: php binary_reader.php filename start_position read_length | less\n");
 }
 
 $filesize = filesize($argv[1]);
