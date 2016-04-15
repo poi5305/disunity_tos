@@ -1,11 +1,16 @@
 <?php
+// Author: Andy (Min-Te, Chou)
+
+if ($argc < 4) {
+	die("usage: php binary_reader.php filename start_position read_length\n");
+}
+
 $filesize = filesize($argv[1]);
 $fp = fopen($argv[1], "r");
-fseek($fp, $argv[3]|0);
+fseek($fp, $argv[2]|0);
 
-$headerSize = min($argv[2], $filesize);
+$headerSize = $argv[3]|$filesize;
 $header = fread($fp, $headerSize);
-//$headerBytes = unpack("C*", $header);
 
 $headerHex = unpack("H*", $header)[1];
 $headerInt_32 = unpack("I*", $header);
@@ -34,7 +39,5 @@ for($i = 0; $i < ($headerSize/4); $i++) {
 		chr($headerInt_08[$int08_i + 3])
 	);
 }
-// 349552 / 16 = 21847
-// 512 * 512 / 21847 = 12 
 	
 ?>
