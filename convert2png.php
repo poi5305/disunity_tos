@@ -1,28 +1,50 @@
 <?php
 // Author: Andy (Min-Te, Chou)
 
-$unity3dFormat = "Z:*:format/m/C/Z:*:version/Z:*:version2/m/I:9/Z:*:bundleName";
-$v3Format_p1 = "I:1:_size/z:*:path/m/I:13:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
-$v3Format_p2 = "I:1:_size/z:*:path/m/I:14:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
-$v5Format_p1 = "I:1:_size/z:*:path/m/I:14:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
-$v5Format_p2 = "I:1:_size/z:*:path/m/I:15:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
-$v5Format_p3 = "I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
-
+// global parameters
+$BIN_DETEX = "detex/detex-convert";
+$BIN_PVRTC = "decompress-pvrtc/decompress";
+$OUT_PATH = "png2";
+// unity file will move to DONE_PATH if convert to png success, make sure done path is created
+$DONE_PATH = "done";
 
 // ---------------Header------------------
+// unity header format (to fetch unity version)
+$unity3dFormat = "Z:*:format/m/C/Z:*:version/Z:*:version2/m/I:9/Z:*:bundleName";
+
+// image header format (fetch image width, height, size and image format)
+// different unity version has different format
+$v3Format_p1 = "I:1:_size/z:*:path/m/I:13:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
+$v3Format_p2 = "I:1:_size/z:*:path/m/I:14:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:9:s/I:1:checkSize";
+$v52Format_p1 = "I:1:_size/z:*:path/m/I:14:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
+$v52Format_p2 = "I:1:_size/z:*:path/m/I:15:f/I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
+$v53Format_p3 = "I:1:_size/z:*:name/m/I:1:width/I:1:height/I:1:imageSize/I:1:imageType/I:10:s/I:1:checkSize";
+
+// ---------------Runner------------------
+
+if ($argc < 2) {
+	die("usage: php convert2png.php filename\n");
+}
+
+@mkdir($OUT_PATH);
+@mkdir($DONE_PATH);
 
 $fn = $argv[1];
-echo "Convert $argv[1] ";
-$filesize = filesize($fn);
+if (!file_exists($fn)) {
+	die("Error! unity file $fn not exist!\n");
+}
 $fp = fopen($fn, "r");
 
+// to extract unity header for version
+// 100 size is enough to extract unity version
 $unity3dHeader = fread($fp, 100);
-
 $d = unpack2($unity3dFormat, $unity3dHeader);
-
 $version = $d['version'];
 $bundleName = $d['bundleName'];
 
+// parse image header with different unity version
+// 4236, 4244, 4096 are magic numbers for image header position
+// use binary_reader.php to find these image header position 
 $tmps = array();
 if ($version == '3.x.x') {
 	fseek($fp, 4236);
@@ -39,63 +61,74 @@ if ($version == '3.x.x') {
 		$tmps = unpack2fp($v5Format_p2, $fp);
 	}
 } else {
+	// maybe version 5.3.1p4 or die
+	$version = "5.3.1p4";
 	fseek($fp, 4096);
 	$tmps = unpack2fp($v5Format_p3, $fp);
-	if ($tmps['imageSize'] != $tmps['checkSize']) {
-		fseek($fp, 4236);
-		$tmps = unpack2fp($v3Format_p2, $fp);
-	}
 }
-//print_r($tmps);
+
 if ($tmps['imageSize'] != $tmps['checkSize']) {
-	
-	die("Error! read header fail, checkSize not true\n");	
+	die("Convert $fn error! version: $version, imageSize != checkSize\n");
 }
 
-
-$data = fread($fp, $filesize - ftell($fp));
+// image data include unity image header
+$data = fread($fp, filesize($fn) - ftell($fp));
 fclose($fp);
-
-$name = $tmps['name'];
 
 convertToPNG($data, $tmps['imageType'], $tmps['width'], $tmps['height'], $tmps['imageSize'], $tmps['name']);
 
-if (file_exists("png2/$name.png")) {
-	unlink("$name.ktx");
-	rename($argv[1], "done/$argv[1]");
-	die("already exists\n");	
+$name = $tmps['name'];
+if (file_exists("$OUT_PATH/$name.png")) {
+	rename($fn, "$DONE_PATH/$fn");
+	echo "Convert success! $OUT_PATH/$name.png Unity file $fn move to done path\n";	
+} else {
+	echo "Convert failure! Unity file $fn can not convert to png\n";
 }
 
+exit();
+
+// ---------------RunEnd------------------
+
+// convert rawdata to png file with different types
+// if type is RGBA4444 using makePng function. 
+// if type is PVRTC_RGBA4 using decompress-pvrtc open source https://github.com/tlozoot/decompress-pvrtc
+// other types are using detex open source https://github.com/hglm/detex
 function convertToPNG(&$data, $type, $w, $h, $s, $name) {
-	$detex = "detex/detex-convert";
+	global $BIN_DETEX;
+	global $BIN_PVRTC;
+	global $OUT_PATH;
+	
 	$header = makeKtxHeader($type, $w, $h);
 	$size = $header[17];
 	echo "$type $w $h $s $size $name.ktx $name.png\n";
 	if ($s < $size) {
 		die("Error! Size. $s $size");
 	}
-	if ($type == 13) {
-		makePng($data, $w, $h, $size, $name);
-	} else if ($type == 33) {
-		$headerLength = (count($header) - 1) * 4;
+	if ($type == 13) { // RGBA4444
+		makePng($data, $w, $h, $size, "$OUT_PATH/$name.png");
+	} else if ($type == 33) { // PVRTC_RGBA4
+		// create pvrtc rgba4444 rawdata file and use decompress-pvrtc to convert to png file
 		$fpKtx = fopen("$name.ktx", "w");
 		fwrite($fpKtx, $data, $s);
 		fclose($fpKtx);
-		echo shell_exec("decompress-pvrtc/decompress $w $h $name.ktx png2/$name.png");
-	} else {
+		echo shell_exec("$BIN_PVRTC $w $h $name.ktx $OUT_PATH/$name.png");
+	} else { // see makeKtxHeader()
+		// create rawdata file with ktx header and use detex to convert to png file
 		$headerLength = (count($header) - 1) * 4;
 		$fpKtx = fopen("$name.ktx", "w");
 		fwrite($fpKtx, array_pack($header), $headerLength);
 		fwrite($fpKtx, $data, $size);
 		fclose($fpKtx);
-		if ($type == 1) {
-			echo shell_exec("$detex -o A8 $name.ktx png2/$name.png");	
+		if ($type == 1) { // only alpha value image file
+			echo shell_exec("$BIN_DETEX -o A8 $name.ktx $OUT_PATH/$name.png");	
 		} else {
-			echo shell_exec("$detex -o RGBA8 $name.ktx png2/$name.png");
+			echo shell_exec("$BIN_DETEX -o RGBA8 $name.ktx $OUT_PATH/$name.png");
 		}
+		unlink("$name.ktx");
 	}
 }
 
+// make png image from rawdata with format RGBA4444
 function makePng(&$d, $w, $h, $s, $name) {
 	$data = unpack("C*", $d);
 	$image = imagecreatetruecolor($w, $h);
@@ -113,17 +146,20 @@ function makePng(&$d, $w, $h, $s, $name) {
 		$b = ($c2 >> 4) << 4;
 		$a = ($c2 & 0xF) << 4;
 		$a = (256 - $a) / 2 - 1;
-		//if ($r != 0 || $g != 0 || $b != 0) {
-			//echo "$x, $y: $c1, $c2: r $r, g $g, b $b, a $a\n";	
-		//}
 		
 		$color = imagecolorallocatealpha($image , $r , $g , $b, $a);
-		imagesetpixel ( $image , $x , $y , $color );
+		imagesetpixel($image , $x , $y , $color);
 	}
-	imagepng($image, "png2/$name.png");
+	imagepng($image, $name);
 	imagedestroy($image);
 }
 
+// make .ktx header for detex reading
+// $t unity image format enum
+// $w image width
+// $h image height
+// @see unity_image_format.txt for $t
+// @see detex/file-info.c for $type4, $type6 and $type7
 function makeKtxHeader($t, $w, $h) {
 	$type4 = 0;
 	$type6 = 0;
