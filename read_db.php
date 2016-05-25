@@ -26,10 +26,43 @@ foreach($xml->string as $string) {
 	
 	
 }
+// PLACE 1水 2火 3木 4光 5暗 6塔
+//MH_CACHE_API_DATA_STAGE_JSON 2, 3|2|4|1|1||0|||冰之亡靈塔 |0|0|0|0|0||0
+// id|id2|id3|place|?|?|?|?|?|name
+
+// MH_CACHE_API_DATA_FLOOR_JSON 3, 17|5|3|90|5|5||石岩之魔塔|0|0|0|0|||0|0||0||0|0|0|0|0|0|0||0|0|
+// id|stage|order|monster_id|energy|battle_number|boss|name|
+
+// MH_CACHE_RUNTIME_DATA_CURRENT_FLOOR_WAVES 現在中的戰鬥
+
+// MH_CACHE_GAMEPLAY_DATA_CURRENT_WAVE 戰鬥中的關卡位置
 
 foreach($xml->int as $string) {
 	$result[(string) $string['name']] = (int) $string['value'];
 }	
+/*
+
+"characteristic": 0,
+"child": null,
+"effectType": 0,
+"extras": null,
+"guildWarAttack": -1,
+"guildWarAttackDuration": -1,
+"guildWarDefense": -1,
+"guildWarHp": -1,
+"isRareAppear": 0,
+"level": 40,
+"lootItem": null,
+"monsterId": 67,
+"nextEnemy": null,
+"offsetX": 0,
+"offsetY": 0,
+"positionType": 0,
+"skillList": []
+
+"67|5|2|3|1|3|3|4|2.5|2.5|50|2|2|21|35|800|1100|200|100|24|3|4000|165|556|87|293|137|484|1691|564|108|22|61|0|334|241|241|246|251|256|10|-10|3|1.00|0|0|||0|0||||0|0|0|0|66",
+23687
+*/
 
 //print_r($result);
 ?>
